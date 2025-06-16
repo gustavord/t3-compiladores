@@ -1,0 +1,16 @@
+int a;
+void main() { 
+    a = 5;
+    while (a < 5) {
+    write("Falhou, nao deve ser executado");
+    a++;
+}
+
+a = 5;
+do {
+    write("a eh = ", a);
+    a++;
+} while (a < 5);
+
+} 
+

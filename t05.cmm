@@ -1,0 +1,40 @@
+int i;
+int j;
+
+void main() {
+   
+   write("> teste 1 ");
+   for (i=1;i<=5;i++)
+        write(" i: ", i);
+   
+   write(" ");
+   write("> teste 2 ");
+   i = 10;
+   for (;i<=13;) {
+        write(" i: ", i);
+        i++;
+   }
+   
+   write(" ");     
+   write("> teste 3 ");
+   i = 100;
+   for (;;) {
+        i++;
+        if (i<105) continue;
+        if (i>110) break;
+        write(" i: ", i);
+   }   
+   
+   write(" ");
+   write("> teste 4 ");
+   for (i=1; i<=3;i++) 
+       for (j=1; j<=3;j++) 
+           write(" - ", i*j);
+        
+   write(" ");
+   write("> teste 5 ");
+   for (i=1; i<=3;i+=1) 
+       for (j=1; j<=3;j+=1) 
+           write(" - ", i*j);
+ } 
+
