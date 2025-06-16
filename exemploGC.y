@@ -7,9 +7,11 @@
  
 
 %token ID, INT, FLOAT, BOOL, NUM, LIT, VOID, MAIN, READ, WRITE, IF, ELSE
-%token WHILE,TRUE, FALSE, IF, ELSE
+%token WHILE,TRUE, FALSE, IF, ELSE, FOR, DO
 %token EQ, LEQ, GEQ, NEQ 
 %token AND, OR
+%token CONTINUE, BREAK
+%token PP, MM, PE
 
 %right '='
 %left OR
@@ -50,10 +52,8 @@ lcmd : lcmd cmd
 	   |
 	   ;
 	   
-cmd :  ID '=' exp	';' {  System.out.println("\tPOPL %EDX");
-  						   System.out.println("\tMOVL %EDX, _"+$1);
-					     }
-			| '{' lcmd '}' { System.out.println("\t\t# terminou o bloco..."); }
+cmd :  exp	';' {  System.out.println("\tPOPL %EDX"); }
+	  | '{' lcmd '}' { System.out.println("\t\t# terminou o bloco..."); }
 					     
 					       
       | WRITE '(' LIT ')' ';' { strTab.add($3);
@@ -87,20 +87,41 @@ cmd :  ID '=' exp	';' {  System.out.println("\tPOPL %EDX");
 									System.out.println("\tMOVL %EAX, (%EDX)");
 									
 								}
-         
+    | DO cmd {
+    System.out.printf("rot_%02d:\n", proxRot);
+    pRot.push(proxRot);
+    proxRot += 2; 
+    bRot.push(pRot.peek() + 1);
+    cRot.push(pRot.peek()); 
+}
+	WHILE '(' exp ')' ';' {
+		System.out.println("\tPOPL %EAX   # desvia se falso...");
+		System.out.println("\tCMPL $0, %EAX");
+		System.out.printf("\tJE rot_%02d\n", (int)pRot.peek() + 1); // pula pro final se falso
+		System.out.printf("\tJMP rot_%02d\n", pRot.peek() - 1); // pula pro inicio
+		System.out.printf("rot_%02d:\n", (int)pRot.peek() + 1); // fim do loop
+		pRot.pop();
+		bRot.pop(); 
+		cRot.pop();  
+}
+
     | WHILE {
 					pRot.push(proxRot);  proxRot += 2;
 					System.out.printf("rot_%02d:\n",pRot.peek());
+					cRot.push(pRot.peek());
+					bRot.push(pRot.peek()+1);
 				  } 
 			 '(' exp ')' {
-			 							System.out.println("\tPOPL %EAX   # desvia se falso...");
-											System.out.println("\tCMPL $0, %EAX");
-											System.out.printf("\tJE rot_%02d\n", (int)pRot.peek()+1);
-										} 
+						System.out.println("\tPOPL %EAX   # desvia se falso...");
+							System.out.println("\tCMPL $0, %EAX");
+							System.out.printf("\tJE rot_%02d\n", (int)pRot.peek()+1);
+						} 
 				cmd		{
 				  		System.out.printf("\tJMP rot_%02d   # terminou cmd na linha de cima\n", pRot.peek());
 							System.out.printf("rot_%02d:\n",(int)pRot.peek()+1);
 							pRot.pop();
+							bRot.pop();
+							cRot.pop();
 							}  
 							
 			| IF '(' exp {	
@@ -116,6 +137,38 @@ cmd :  ID '=' exp	';' {  System.out.println("\tPOPL %EDX");
 											System.out.printf("rot_%02d:\n",pRot.peek()+1);
 											pRot.pop();
 										}
+
+	| FOR '(' for_exp ';' {
+		pRot.push(proxRot);
+		proxRot += 4;
+		cRot.push(pRot.peek()+3);
+		bRot.push(pRot.peek()+1);
+
+		System.out.printf("rot_%02d: \t\t#EXP \n",(int)pRot.peek());
+	}
+	for_exp ';'{
+		System.out.println("\tPOPL %EAX");
+		System.out.println("\tCMPL $0, %EAX");
+		System.out.printf("\tJE rot_%02d\n", pRot.peek()+1); 
+		System.out.printf("\tJMP rot_%02d\n", pRot.peek()+2);
+	
+		System.out.printf("rot_%02d: \t\t#INCR\n",(int)pRot.peek()+3);
+	}
+	for_exp ')'{
+		System.out.printf("\tJMP rot_%02d\n", pRot.peek());
+		System.out.printf("rot_%02d: \t\t#COMANDO\n",(int)pRot.peek()+2);
+	}
+	cmd {
+		System.out.printf("\tJMP rot_%02d\n", pRot.peek()+3);
+		System.out.printf("rot_%02d:\t\t#FIM\n",(int)pRot.peek()+1);
+		pRot.pop();
+		cRot.pop();
+		bRot.pop();
+	}
+
+	| CONTINUE	';' {System.out.printf("\t JMP rot_%02d\n", cRot.peek()); }
+
+	| BREAK	';'	{System.out.printf("\t JMP rot_%02d\n", bRot.peek());}
      ;
      
      
@@ -137,7 +190,10 @@ restoIf : ELSE  {
 exp :  NUM  { System.out.println("\tPUSHL $"+$1); } 
     |  TRUE  { System.out.println("\tPUSHL $1"); } 
     |  FALSE  { System.out.println("\tPUSHL $0"); }      
- 		| ID   { System.out.println("\tPUSHL _"+$1); }
+ 	| ID   { System.out.println("\tPUSHL _"+$1); }
+	| ID '=' exp {	System.out.println("\tPOPL %EDX");
+					System.out.println("\tMOVL %EDX, _"+$1);
+					System.out.println("\tPUSHL %EDX"); }
     | '(' exp	')' 
     | '!' exp       { gcExpNot(); }
      
@@ -156,8 +212,60 @@ exp :  NUM  { System.out.println("\tPUSHL $"+$1); }
 												
 		| exp OR exp		{ gcExpLog(OR); }											
 		| exp AND exp		{ gcExpLog(AND); }											
-		
+	
+	| ID PP {
+		System.out.println("\tPUSHL _"+$1);
+		System.out.println("\tPUSHL _"+$1);
+		System.out.println("\tPUSHL $1");
+		System.out.println("\tPOPL %EBX");
+		System.out.println("\tPOPL %EAX");
+		System.out.println("\tADDL %EBX, %EAX");
+		System.out.println("\tMOVL %EAX, _"+$1);
+	}
+
+	| PP ID {
+		System.out.println("\tPUSHL _"+$2); 
+		System.out.println("\tPUSHL $1");        
+		System.out.println("\tPOPL %EBX");       
+		System.out.println("\tPOPL %EAX");       
+		System.out.println("\tADDL %EBX, %EAX"); 
+		System.out.println("\tMOVL %EAX, _"+$2); 
+		System.out.println("\tPUSHL _"+$2);      
+	}
+
+	| ID MM {
+		System.out.println("\tPUSHL _"+$1);
+		System.out.println("\tPUSHL _"+$1);
+		System.out.println("\tPUSHL $1");
+		System.out.println("\tPOPL %EBX");
+		System.out.println("\tPOPL %EAX");
+		System.out.println("\tSUBL %EBX, %EAX");
+		System.out.println("\tMOVL %EAX, _"+$1);
+	}
+
+	| MM ID {
+		System.out.println("\tPUSHL _"+$2); 
+		System.out.println("\tPUSHL $1");        
+		System.out.println("\tPOPL %EBX");       
+		System.out.println("\tPOPL %EAX");       
+		System.out.println("\tSUBL %EBX, %EAX"); 
+		System.out.println("\tMOVL %EAX, _"+$2); 
+		System.out.println("\tPUSHL _"+$2); 
+	}
+
+	| ID PE exp {
+		System.out.println("\tPUSHL _"+$1);
+		System.out.println("\tPOPL %EBX");
+		System.out.println("\tPOPL %EAX");
+		System.out.println("\tADDL %EBX, %EAX" );
+		System.out.println("\tPUSHL %EAX");
+		System.out.println("\tPOPL %EDX");
+		System.out.println("\tMOVL %EDX, _"+$1);
+		System.out.println("\tPUSHL %EDX");
+	}
 		;							
+
+for_exp : exp | ;
 
 
 %%
@@ -170,6 +278,8 @@ exp :  NUM  { System.out.println("\tPUSHL $"+$1); }
   private ArrayList<String> strTab = new ArrayList<String>();
 
   private Stack<Integer> pRot = new Stack<Integer>();
+  private Stack<Integer> bRot = new Stack<Integer>(); // break
+  private Stack<Integer> cRot = new Stack<Integer>(); // continue
   private int proxRot = 1;
 
 

@@ -59,6 +59,9 @@ NL  = \n | \r | \r\n
 "<="   {  return Parser.LEQ; }
 ">="   {  return Parser.GEQ; }
 "!="   {  return Parser.NEQ; }
+"++"   { return Parser.PP;   }
+"--"   { return Parser.MM;   }
+"+="   { return Parser.PE;   }
 
 "&&"   { return Parser.AND; }
 "||"   {  return Parser.OR; }
@@ -75,6 +78,10 @@ if   { return Parser.IF; }
 else   { return Parser.ELSE; }
 true   { return Parser.TRUE; }
 false   { return Parser.FALSE; }
+for    {return Parser.FOR; }
+break   {return Parser.BREAK; }
+continue  {return Parser.CONTINUE;  }
+do      { return Parser.DO; }
 
 
 
