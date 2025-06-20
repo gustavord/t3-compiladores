@@ -3,8 +3,8 @@ int b;
 int c;
 
 void main() {  
-    a = b = c = 7;
-    a++;
+    a = b = c = 1;
+    a += a++ + ++a;
  
     write (" a (8)=  ", a );
     write (" b (7)=  ", b );
